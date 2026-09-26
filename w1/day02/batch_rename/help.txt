@@ -1,0 +1,20 @@
+usage: batch_rename.py [-h] [--suffix SUFFIX] [--add-prefix PREFIX] target_dir
+
+批量给目录内文件添加文件名前缀
+
+positional arguments:
+  target_dir           目标文件夹路径
+
+options:
+  -h, --help           show this help message and exit
+  --suffix SUFFIX      只处理该后缀的文件，例：.txt；不填则处理全部文件
+  --add-prefix PREFIX  给文件名增加前缀，例：exp_
+
+
+eg:
+# 查看帮助
+python batch_rename.py -h
+# 给test目录全部 .png 文件增加前缀 poc_
+python batch_rename.py test --suffix .png --add-prefix poc_
+# 目录下所有文件加前缀，不限制后缀
+python batch_rename.py test --add-prefix log_

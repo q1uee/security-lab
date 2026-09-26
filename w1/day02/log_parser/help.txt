@@ -1,0 +1,19 @@
+sage: log_parser.py [-h] [--top N] log_file
+
+Web访问日志统计工具，统计IP、请求方法、HTTP状态码
+
+positional arguments:
+  log_file      日志文件路径
+
+options:
+  -h, --help    show this help message and exit
+  --top N       输出访问频次最高前N个IP；不提供则不输出IP排行榜
+
+
+
+eg:
+python log_parser.py -h
+# 基础统计，只输出汇总
+python log_parser.py access.log
+# 统计并且输出访问最多前5个IP
+python log_parser.py access.log --top

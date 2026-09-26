@@ -1,0 +1,19 @@
+usage: json_extract.py [-h] --key KEY [--output OUTPUT] json_file
+
+从JSON文件批量提取指定key对应的值
+
+positional arguments:
+  json_file         待解析的json文件路径
+
+options:
+  -h, --help        show this help message and exit
+  --key KEY         需要提取的字段名（必填）
+  --output OUTPUT   将提取结果写入该文件；不填则直接打印到控制台
+
+
+eg:
+python json_extract.py -h
+# 提取所有ip字段，控制台打印
+python json_extract.py data.json --key ip
+# 提取id字段，结果保存到result.txt
+python json_extract.py data.json --key id --output result.txtusage: log_parser.py [-h] [--top N] log_file
