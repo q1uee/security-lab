@@ -16,4 +16,4 @@ python json_extract.py -h
 # 提取所有ip字段，控制台打印
 python json_extract.py data.json --key ip
 # 提取id字段，结果保存到result.txt
-python json_extract.py data.json --key id --output result.txtusage: log_parser.py [-h] [--top N] log_file
+python json_extract.py data.json --key id --output result.txt  usage: log_parser.py [-h] [--top N] log_file
