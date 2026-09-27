@@ -1,0 +1,10 @@
+{
+  "task": "web漏洞探测",
+  "data": {
+    "request_list": [
+      {"url": "/admin", "method": "GET", "status_code": 200, "length": 1240},
+      {"url": "/api/user", "method": "POST", "status_code": 403, "length": 310},
+      {"url": "/login", "method": "GET", "status_code": 200, "length": 890}
+    ]
+  }
+}
