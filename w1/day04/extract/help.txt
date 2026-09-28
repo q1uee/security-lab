@@ -1,0 +1,20 @@
+混杂文本提取器（IP / URL / 邮箱）
+
+位置参数：source 待解析文本文件路径（必填）
+可选参数：--out，输出文件路径；不填就只在控制台输出结果
+示例调用：
+python extract.py log.txt
+python extract.py log.txt --out result.txt
+
+
+输出预期结果：
+IP：
+192.168.1.1
+1.1.1.1
+邮箱：
+test@demo.com
+support_01@company-name.org
+URL：
+https://www.baidu.com/index.html?a=1&b=2
+http://test.cn/page
+https://a.com/info

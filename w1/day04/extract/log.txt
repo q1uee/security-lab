@@ -1,0 +1,8 @@
+2026-09-28 10:20:15 访问来源 192.168.1.1 外部IP 1.1.1.1
+
+管理员邮箱：test@demo.com，support_01@company-name.org
+访问链接：https://www.baidu.com/index.html?a=1&b=2
+另一个地址 http://test.cn/page，后面带括号 https://a.com/info)
+乱码干扰文字：测试12345，abc{[!@#]}
+重复IP：1.1.1.1
+重复邮箱：test@demo.com
