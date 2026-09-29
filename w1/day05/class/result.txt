@@ -1,0 +1,10 @@
+IP:
+192.168.1.1
+1.1.1.1
+邮箱:
+test@demo.com
+support_01@company-name.org
+url:
+https://www.baidu.com/index.html?a=1&b=2
+http://test.cn/page
+https://a.com/info
