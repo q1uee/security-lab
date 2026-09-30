@@ -1,0 +1,22 @@
+{
+  "summary": {
+    "total_lines": 1250,
+    "error_count": 28,
+    "warn_count": 45,
+    "analyze_time": "2026-09-30"
+  },
+  "items": [
+    {
+      "line_no": 12,
+      "level": "ERROR",
+      "msg": "connection timeout",
+      "ip": "192.168.1.10"
+    },
+    {
+      "line_no": 45,
+      "level": "WARN",
+      "msg": "slow query",
+      "ip": "192.168.1.11"
+    }
+  ]
+}
