@@ -1,0 +1,19 @@
+[project]
+name = "probe"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Q1UEE", email = "Q1UEE@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.34.2",
+]
+
+[project.scripts]
+probe = "probe:main"
+
+[build-system]
+requires = ["uv_build>=0.12.17,<0.13.0"]
+build-backend = "uv_build"
