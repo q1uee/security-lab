@@ -1,0 +1,22 @@
+{
+  "args": {},
+  "data": "{\"username\": \"test_user\", \"msg\": \"hello post\", \"num\": 123}",
+  "files": {},
+  "form": {},
+  "headers": {
+    "Accept": "*/*",
+    "Accept-Encoding": "gzip, deflate",
+    "Content-Length": "58",
+    "Content-Type": "application/json",
+    "Host": "httpbin.org",
+    "User-Agent": "python-requests demo",
+    "X-Amzn-Trace-Id": "Root=1-6abdcbb4-591869bb522e2afc6c91ec7c"
+  },
+  "json": {
+    "msg": "hello post",
+    "num": 123,
+    "username": "test_user"
+  },
+  "origin": "220.200.125.158",
+  "url": "https://httpbin.org/post"
+}
