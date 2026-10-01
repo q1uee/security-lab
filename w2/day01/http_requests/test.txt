@@ -1,0 +1,6 @@
+https://www.baidu.com
+https://httpbin.org/status/200
+https://httpbin.org/status/404
+https://httpbin.org/delay/1
+https://example.com
+http://127.0.0.1:9999
