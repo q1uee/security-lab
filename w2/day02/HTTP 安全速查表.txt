@@ -1,0 +1,131 @@
+一、HTTP 请求方法（8 个，安全含义标注）
+安全方法定义：执行请求不会修改服务器资源，只读；
+不安全：会新增 / 修改 / 删除资源。
+GET ✅ 安全
+读取资源，参数放 URL。不应该修改数据。
+风险点：参数会留在日志、浏览器历史；不适合传敏感数据。
+
+HEAD ✅ 安全
+和 GET 几乎一样，但服务器只返回响应头，不返回响应体。
+扫描器常用：快速探测存活、判断响应长度，节省流量。
+
+POST ❌ 不安全
+提交数据，新增资源。数据放请求体。
+常见：表单提交、登录、上传、业务修改。
+
+PUT ❌ 不安全
+替换 / 覆盖目标资源。
+危险场景：PUT 上传文件（如果 Web 服务开启 PUT 方法，可直接写 webshell）。
+
+DELETE ❌ 不安全
+删除目标资源。
+危险：未授权 DELETE 可直接删服务器文件。
+
+OPTIONS ✅ 安全（探测方法）
+询问服务器：这个 URL 支持哪些 HTTP 方法。
+渗透常用：探测允许方法，寻找 PUT/DELETE 等高危方法。
+例：Allow: GET,HEAD,POST,PUT
+
+TRACE ⚠️ 危险（回显）
+服务器原样回显收到的请求。
+漏洞：XST 跨站追踪，窃取 Cookie。现代 Web 服务器默认关闭 TRACE。
+
+PATCH ❌ 不安全
+局部修改资源（和 PUT 全量覆盖区分）。
+例如：只修改一条数据里的某个字段。
+
+一句话记忆：GET/HEAD/OPTIONS只读；POST/PUT/DELETE/PATCH改数据；TRACE 危险。
+
+
+二、HTTP 状态码 1xx~5xx 分类
+1xx 信息：仅中间提示，不代表最终结果
+    100 Continue：告诉客户端可以继续发送请求体
+2xx 成功 ✅
+    200 OK：请求成功
+    201 Created：资源创建成功（POST/PUT）
+    204 No Content：成功，但没有响应体（HEAD 经常返回）
+3xx 重定向 跳转
+    301 Moved Permanently：永久重定向（缓存）
+    302 Found：临时跳转（旧版 HTTP，GET 以外方法可能变 GET）
+    303 See Other：跳转，强制使用 GET
+    304 Not Modified：缓存命中，资源没变化
+4xx 客户端错误 请求不对 / 权限不足
+    400 Bad Request：请求报文格式错误
+    401 Unauthorized：未认证，需要登录 / Authorization 头
+    403 Forbidden：认证成功，但无权限访问
+    404 Not Found：资源不存在
+    405 Method Not Allowed：方法不允许（OPTIONS 探测经常看到）
+    429 Too Many Requests：请求频率太高，限流（扫描器容易触发）
+5xx 服务端错误 服务器崩了
+    500 Internal Server Error：服务器内部异常（漏洞探测重点）
+    502 Bad Gateway：网关 / 反向代理后端无响应
+    503 Service Unavailable：服务不可用，停机 / 过载
+    504 Gateway Timeout：网关超时
+
+三、必背请求头（Request Header）+ 安全说明
+重点：所有来自客户端的 Header 全部可控！ 都可以被攻击者伪造。
+Host: example.com
+    作用：HTTP/1.1 强制头，同一个 IP 上区分多个网站（虚拟主机）
+    🔴安全风险：Host 头攻击。
+    服务器用 Host 头拼接 URL / 生成邮件，可触发 SSRF、缓存投毒。
+User-Agent: curl/xxx / Mozilla/xxx
+    作用：客户端浏览器 / 工具标识
+    🔴安全风险：UA 注入；很多网站把 UA 存入日志，若后端直接拼接 UA 到 SQL / 页面，产生注入；WAF 经常基于 UA 做拦截。
+Referer: shturl.cc/xubPl
+    作用：上一跳页面地址，从哪个页面跳转过来
+    🔴安全风险：客户端可控，可伪造来源；很多业务错误拿 Referer 做 “可信来源” 鉴权，可绕过。
+Content-Type: application/json / application/x-www-form-urlencoded / multipart/form-data
+    作用：告诉服务器，请求体是什么格式
+    application/x-www-form-urlencoded：普通表单 POST
+    multipart/form-data：文件上传
+    application/json：json 接口
+    🔴安全风险：后端依赖 Content-Type 解析 body，解析器差异造成绕过（例如内容类型混淆漏洞）。
+    Content-Length: 255
+    作用：请求体字节长度，服务器读到这个长度就停止读 body
+    🔴安全风险：HTTP 请求走私（CL.TE/ TE.CL）高危漏洞。
+Cookie: sessionid=abc123
+    作用：身份会话凭证
+    🔴安全风险：XSS 偷 Cookie；Cookie 没有 HttpOnly/Secure 会被窃取；客户端完全可控，可以随意修改 Cookie 值发送。
+    Authorization: Bearer xxx / Basic dXNlcjE6cGFzcw==
+    作用：身份认证头
+    Basic：账号密码 base64 编码（非加密）
+    Bearer：token 鉴权
+    🔴安全风险：明文传输（http 下）；泄露后可直接接管账号。
+X-Forwarded-For: 1.2.3.4
+    简称 XFF，代理 / 反向代理传递真实客户端 IP
+    格式：X-Forwarded-For: 真实IP, 代理IP1, 代理IP2
+    🔴【高频考点】XFF 伪造！
+    客户端直接写 X-Forwarded-For: 127.0.0.1 发给服务器；
+    如果后端直接信任 XFF 头当作用户 IP，攻击者可以伪造为内网 / 本地 IP，绕过 IP 白名单。
+
+响应头（简单补充，扫描器会见到）
+Server：后端服务版本（gunicorn/nginx，信息泄露）
+Set-Cookie：下发 Cookie 给浏览器
+Content-Type：响应体类型
+Content-Length：响应体长度
+X-Frame-Options：防点击劫持
+X-XSS-Protection：旧版 XSS 防护
+Strict-Transport-Security (HSTS)：强制 HTTPS
+
+
+# HTTP速查（安全开发/渗透）
+## Method
+✅安全(只读): GET, HEAD, OPTIONS
+❌修改资源: POST,PUT,DELETE,PATCH
+⚠危险: TRACE(回显XST)
+
+## Status
+1xx:提示 | 2xx成功 |3xx跳转 |4xx客户端错 |5xx服务端错
+200/201/204;301/302/304;400/401/403/404/405/429;500/502/503/504
+
+## Request Header
+Host: 虚拟主机区分 | 风险:Host头攻击
+User-Agent:客户端标识 |风险:UA注入,WAF识别
+Referer:来源页 |风险:伪造来源绕过校验
+Content-Type:请求体格式
+Content-Length:body字节长 |风险:HTTP走私
+Cookie:会话凭证
+Authorization:身份认证
+X-Forwarded-For(XFF):传递IP |风险:客户端伪造IP绕过白名单
+
+安全公理：**所有客户端发送的Header全部可控，不可信任！**

@@ -30,3 +30,30 @@ $	字符串结尾；re.MULTILINE每一行结尾
 *	{0,} 0 次或多次
 +	{1,} 1 次或多次（至少一次）
 ?	{0,1} 0 次或 1 次
+
+
+re.match(pattern, string, flags=0)
+    从字符串开头匹配，开头不满足直接返回 None
+    返回：匹配对象 Match 或者 None
+    .group(1) 取第 1 捕获分组内容
+
+
+re.search(pattern, string, flags=0)
+    整个字符串里面任意位置搜索，找到第一个匹配就返回，不要求开头匹配
+
+re.findall(pattern, string, flags=0)
+    查找全部匹配结果，返回列表，没有匹配返回空列表
+    适合批量提取，比如提取所有链接、所有 Set-Cookie
+
+re.sub(pattern, repl, string, count=0, flags=0)
+    替换，类似字符串 replace，支持正则匹配替换
+
+re.finditer(pattern, string, flags=0)
+    找到所有匹配，返回迭代器（Match 对象）。数据量大的时候推荐，节省内存
+
+Match 对象常用方法（match/search 成功后拿到）
+.group() / .group(0)：返回完整匹配内容
+.group(1)：第 1 个括号捕获分组，.group(2)第二个分组
+.groups()：返回所有捕获分组元组
+.start() 匹配起始下标；.end()匹配结束下标
+re.I / re.IGNORECASE：忽略大小写

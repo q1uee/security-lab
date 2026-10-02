@@ -35,15 +35,15 @@ def fetch_github_user(username: str):
 
 def httpbin():
     session = requests.Session()
-    # proxies={"http":"http://127.0.0.1:8080", "https":"http://127.0.0.1:8080"}
+    proxies={"http":"http://127.0.0.1:8080", "https":"http://127.0.0.1:8080"}
     try:
         r = session.get(
             "https://httpbin.org/get",
             params={"id": 100, "name": "demo"},
             headers={"User-Agent": "test"},
-            # proxies=proxies,
+            proxies=proxies,
             timeout=8,
-            # verify=False
+            verify=False
         )
         r.raise_for_status()
         res_data = r.json()
@@ -96,5 +96,5 @@ def post_demo():
 
 if __name__ == "__main__":
     # fetch_github_user("octocat")
-    # httpbin()
-    post_demo()
+     httpbin()
+    # post_demo()

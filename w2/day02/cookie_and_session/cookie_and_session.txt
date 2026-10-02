@@ -1,0 +1,107 @@
+Cookie / Session / 认证 安全速查表
+核心一句话：Cookie 是存储在浏览器客户端的数据；Session 存在服务端；认证是证明你是谁
+一、Cookie 核心属性 + 安全作用 + 攻击 / 绕过
+服务器通过 Set-Cookie 响应头下发 Cookie，浏览器保存，后续同域请求自动带上 Cookie。
+语法示例：
+Set-Cookie: SESSIONID=abc123; Domain=test.com; Path=/; HttpOnly; Secure; SameSite=Lax
+
+Domain（域名）
+作用：控制 Cookie发送给哪些域名。
+Domain=test.com：子域名 a.test.com、test.com 都会带上这个 Cookie。
+不写 Domain：默认是当前设置 Cookie 的精确主机（不会向下传递给子域名）
+⚠️风险 / 绕过：
+配置过大域名（.test.com），如果任意子域名存在 XSS，就可以偷主站 Cookie；
+子域名接管攻击，攻击者拿到子域名，读取 Cookie。
+
+2. **Path（路径）**
+
+- 作用：限定 Cookie 只在指定路径及子路径请求时携带。
+`Path=/admin` → 只有 `/admin`、`/admin/list` 请求带上 Cookie；`/index`不带。
+- ⚠️风险 / 绕过：
+Path 设置太宽泛`Path=/`，全站所有接口携带 Cookie，增大泄露风险；
+路径匹配逻辑缺陷，部分 web 服务器存在路径前缀绕过。
+
+3. **HttpOnly** ✅ 防 XSS 偷 Cookie 最重要防线
+
+- 作用：**JS 无法读取该 Cookie**。`document.cookie`拿不到。
+- ⚠️绕过：
+HttpOnly**不能阻止网络层面劫持**（抓包、中间人攻击）；
+XSS 依然可以发起请求，浏览器自动带上 Cookie，执行请求（只是不能把 Cookie 读出来传回攻击者）。
+
+Secure
+作用：只有 HTTPS（加密 443）请求才会携带 Cookie；HTTP 明文请求不会发送。
+⚠️绕过：
+网站同时开放 HTTP，攻击者诱导访问 HTTP 页面，可下发不带 Secure 标记的同名 Cookie，覆盖原有 Cookie；
+只在本地内网 HTTP 场景，Secure 会直接失效。
+
+SameSite（Lax / Strict / None）
+作用：防御 CSRF 跨站请求伪造，控制跨站请求是否携带 Cookie
+SameSite=Strict：任何跨站请求，一律不带 Cookie，防护最强
+SameSite=Lax（浏览器默认）：普通跨站 GET 不带；点击链接跳转这种导航 GET 会携带；POST 跨站不带 Cookie
+SameSite=None：跨站全部带上 Cookie，必须同时搭配Secure，否则浏览器拒绝设置 Cookie
+⚠️绕过：
+Lax 模式下，<a>链接跳转仍然携带 Cookie；
+旧浏览器不支持 SameSite，会直接忽略该属性。
+Cookie 安全小结：Domain+Path 控制发送范围；HttpOnly 防 XSS 读取；Secure 强制 HTTPS；SameSite 防 CSRF。任意一个配置错误，安全防线就破了。
+
+二、Session 机制 & Session 固定攻击
+
+Session 机制
+用户登录成功，服务端生成唯一 sessionid，在服务端内存 /redis/db 保存用户身份信息（session 数据）
+服务器Set-Cookie: sessionid=xxxx下发给浏览器
+浏览器后续请求自动带上 Cookie:sessionid
+服务端收到 sessionid，去服务器查询对应的用户信息
+✅关键点：session 数据存在服务端，Cookie 只存 sessionid
+Session 固定攻击（Session Fixation）
+原理：攻击者预先拿到一个合法的 sessionid，诱导受害者使用这个 sessionid 登录。
+登录完成后，这个 sessionid 就绑定了受害者账号，攻击者直接使用该 sessionid 接管账号。
+流程：
+攻击者访问网站，拿到未登录的 sessionid=A
+发给受害者链接，诱导受害者带着 sessionid=A 访问网站
+受害者在页面输入账号密码登录
+服务端把 sessionid=A 绑定受害者身份
+攻击者直接用 sessionid=A 访问，成功登录受害者账号
+防御：用户登录成功后，强制重新生成新 sessionid，销毁旧 session。
+
+三、三种认证方式 Basic / Bearer Token / JWT
+1. Basic Auth（基础认证）
+请求头：Authorization: Basic dXNlcjE6cGFzc3dvcmQ=
+规则：账号 + 冒号 + 密码，整体做Base64 编码（不是加密！Base64 可以直接解码）
+缺点：每次请求都带上，HTTP 明文抓包直接解码；适合内网简单接口。
+风险：中间人抓包直接拿到账号密码。
+2. Bearer Token
+请求头：Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+流程：登录后服务器返回一串随机 Token；后续请求头携带 Bearer+Token
+传统 Token：Token 字符串作为 key，服务端数据库 / Redis 查询用户信息
+对比 Session：Session 是 Cookie 传递；Bearer 一般放在请求头，前后端分离接口常用。
+###3. JWT（JSON Web Token）
+JWT 属于 Bearer 的一种，自包含，服务端不用查数据库。
+格式三段，.分割：header.payload.signature
+header：算法
+payload：存放用户数据（明文！不要放密码）
+signature：签名，校验内容有没有被篡改
+重点：payload 是 Base64 编码，任何人都可以解码看到里面数据，不是加密。
+风险：密钥泄露可伪造 JWT；过期校验缺失；未校验签名。
+
+
+# Cookie、Session、认证
+## Cookie属性
+Domain：控制哪些域名接收Cookie
+Path：控制哪些路径接收Cookie
+HttpOnly：JS不可读，防御XSS窃取Cookie
+Secure：仅HTTPS传输Cookie
+SameSite：Lax/Strict/None，防御CSRF
+
+## Session
+sessionid放在Cookie，用户数据**存储服务端**
+Session固定攻击：诱导受害者使用攻击者预先拿到的sessionid登录
+
+## 认证
+Basic：Basic + base64(账号:密码)，非加密
+Bearer Token：请求头携带token，前后端分离常用
+JWT：Bearer子类，三段式，payload明文，签名防篡改
+
+# requests.Session
+session = requests.Session()
+session.post(login) 登录，自动保存Set-Cookie
+后续session.get()自动携带Cookie，维持会话

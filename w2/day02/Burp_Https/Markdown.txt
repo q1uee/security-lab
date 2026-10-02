@@ -1,0 +1,20 @@
+# Burp代理原理 & 使用笔记
+## 正向代理原理
+链路：客户端脚本 → Burp(127.0.0.1:8080) → 目标服务器
+代理**拆分两段连接**，终结客户端连接，因此可以读取、修改流量。
+HTTPS：Burp做MITM，两段独立TLS；必须导入Burp CA证书，否则证书校验失败。
+
+## 脚本接入Burp思路
+1. Burp Proxy监听127.0.0.1:8080并启动
+2. 脚本配置proxies参数指向该地址，HTTPS场景实验室可关闭证书校验
+3. Burp关闭Intercept(Off)，运行脚本，流量记录在HTTP history
+
+## Burp五大模块
+1. Proxy：抓流量，Intercept拦截/放行；HTTP History保存全部请求
+2. Repeater【重点】：重放请求，**修改单一参数，对比响应差异**，手工渗透核心
+3. Intruder：自动fuzz、爆破，payload替换发包
+4. Decoder：Base64/URL/HTML编码解码
+5. Comparer：对比两段响应文本差异
+
+## 练习顺序
+脚本流量抓到 → 发送请求到Repeater → 修改参数发包对比响应
