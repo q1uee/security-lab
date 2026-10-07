@@ -1,0 +1,84 @@
+# 同源策略与 CORS
+> 学习目标：理解浏览器跨域安全机制，看懂CORS响应头，区分简单请求/预检请求，掌握渗透视角下的风险点与绕过思路
+
+## 1. 同源定义
+**同源判定三要素必须全部相同**
+- 协议（http / https）
+- 域名（主机）
+- 端口
+
+✅ 同源示例
+`http://127.0.0.1:80/a.html` 和 `http://127.0.0.1:80/b.html`
+
+❌ 不同源（任意一项不同即为跨域）
+1. 协议不同：`http://xxx` vs `https://xxx`
+2. 域名不同：`a.test.com` vs `b.test.com`
+3. 端口不同：`127.0.0.1:80` vs `127.0.0.1:8080`
+
+> ⚠️ 重点：**同源策略是浏览器的安全规则！**
+> 不是服务器限制。服务器之间互相请求不受同源策略约束；只有**浏览器里JS发起请求**才会被同源策略拦截。
+
+## 2. 同源策略保护什么
+1. 防止恶意网站JS读取另一个网站的敏感资源（Cookie、LocalStorage、接口返回数据）
+> 例：你登录了银行网站，打开恶意网页；恶意网页JS不能直接读取银行接口数据、银行Cookie。
+2. 限制DOM访问：不同源页面不能互相读取页面DOM。
+
+> 一句话：**隔离不同网站，防止恶意站点窃取用户在其他站点的会话与数据。**
+
+## 3. CORS 跨域资源共享
+CORS 是服务器在**响应头**告诉浏览器：允许来自某个源的跨域请求读取响应结果。
+核心响应头：
+- `Access-Control-Allow-Origin`：允许哪个源。`*` 代表允许所有来源
+- `Access-Control-Allow-Credentials: true`：允许携带Cookie（注意：这个开启时Origin不能写`*`）
+- `Access-Control-Allow-Methods`：允许的请求方法
+- `Access-Control-Allow-Headers`：允许自定义请求头
+
+### 简单请求 vs 预检请求（OPTIONS）
+#### 简单请求（不会先发OPTIONS预检）
+同时满足全部条件：
+1. 请求方法：`GET` / `HEAD` / `POST`
+2. 请求头只有浏览器自带基础头，**没有自定义Header**
+3. Content-Type只能是下面三者之一
+    - `application/x-www-form-urlencoded`
+    - `multipart/form-data`
+    - `text/plain`
+
+流程：直接发送真实请求，浏览器收到响应后检查CORS头；**如果不允许，浏览器拦截返回结果（请求其实已经发到后端了！）**
+
+#### 预检请求（OPTIONS）
+只要不满足简单请求条件，浏览器会**先发一条OPTIONS预检请求**询问服务器是否允许跨域。
+后端返回CORS预检头，浏览器确认允许，**才发送真实业务请求**。
+常见触发场景：
+- 方法为 PUT / DELETE
+- 自定义请求头（如 `X-Token`）
+- Content-Type为 `application/json`（AJAX常用json提交，一定会触发预检）
+
+## 4. ★安全视角：同源策略的绕过路径
+### 4.1 XSS 突破同源
+同源策略限制：**别的网站JS不能读本站数据**
+但是：**XSS是【在本站域内执行JS】**
+> 注入成功后JS运行在当前网站同源环境，不受跨域限制，可以直接读取Cookie、调用同域接口。
+> 👉 同源策略拦外部JS，拦不住自己域名下被注入的JS。
+
+### 4.2 JSONP（历史遗留方案，高危）
+早期没有CORS，利用`<script>`标签**不受同源策略限制**的特性实现跨域。
+- 原理：script标签加载外部js，后端返回函数调用 `callback({"data":"xxx"})`
+- 安全风险：**回调函数名可控 → 存在JSONP回调劫持**
+- 缺点：仅支持GET请求，现在新项目基本不再使用
+
+### 4.3 其他常见跨域风险（渗透常看）
+1. `Access-Control-Allow-Origin: *` 且开启`Allow-Credentials: true` → **无效配置，浏览器直接拒绝**
+2. 后端直接取请求头`Origin`原样放回响应头，没有白名单校验
+> 例：`Access-Control-Allow-Origin: 传入的Origin`，攻击者恶意Origin直接被放行，跨域窃取数据。
+> 这是CORS最经典漏洞！
+
+## 5. 跨域实验：F12观察CORS头
+### 实验环境
+- 站点A：`http://127.0.0.1:80`（页面，页面内JS发起fetch请求）
+- 站点B：`http://127.0.0.1:8080`（后端接口，配置CORS）
+
+#### 实验1：无CORS头，跨域请求
+```js
+fetch("http://127.0.0.1:8080/api")
+.then(res=>res.text())
+.then(console.log)

